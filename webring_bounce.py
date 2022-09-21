@@ -24,7 +24,7 @@ class Unprocessable(object):
 
     def emit(self, start_response):
         start_response('422 Unprocessable Entity', [('Content-Type', 'text/html')])
-        return [b'<h1>422 Unprocessable Entity</h1><p>' + html.escape(self.reason).encode('utf-8') + '</p>']
+        return [b'<h1>422 Unprocessable Entity</h1><p>' + html.escape(self.reason).encode('utf-8') + b'</p>']
 
 class Found(object):
     def __init__(self, location):
