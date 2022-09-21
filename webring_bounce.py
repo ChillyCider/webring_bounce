@@ -89,22 +89,25 @@ class SqliteCache(object):
         self.con.execute("INSERT OR IGNORE INTO cache (key, value) VALUES (?, ?)", (key, value))
         self.con.execute("COMMIT")
 
-def open_cache(spec):
-    parts = spec.split('://', 1)
-    if parts[0] == 'sqlite':
-        if len(parts) == 1:
-            raise ValueError('SQLite cache provider requires a path, e.g. sqlite:///tmp/webring_cache.db')
-        
-        return SqliteCache(parts[1])
-    else:
-        raise ValueError('Could not understand cache provider spec %r' % (spec,))
+def spec_based_cache_opener(spec):
+    def cache_opener():
+        parts = spec.split('://', 1)
+        if parts[0] == 'sqlite':
+            if len(parts) == 1:
+                raise ValueError('SQLite cache provider requires a path, e.g. sqlite:///tmp/webring_cache.db')
+            
+            return SqliteCache(parts[1])
+        else:
+            raise ValueError('Could not understand cache provider spec %r' % (spec,))
+    
+    return cache_opener
 
-def get_sites(cache_spec, ring):
+def get_sites(cache_opener, ring):
     """Get a webring's member sites, checking the cache first."""
 
     key = hashlib.sha256(urllib.parse.unquote(ring).encode('utf-8')).hexdigest()[0:12]
 
-    with open_cache(cache_spec) as cache:
+    with cache_opener() as cache:
         cached_raw = cache.get(key)
         if cached_raw:
             data = json.loads(cached_raw)
@@ -127,14 +130,14 @@ def get_sites(cache_spec, ring):
 
     return sites
 
-def view_next(cache_spec, whitelist, args):
+def view_next(cache_opener, whitelist, args):
     """The bounce URL to go forward in the webring."""
 
     ring = args.get('ring', [None])[0]
     if ring in whitelist:
         from_url = args.get('from', [None])[0]
         if from_url is not None:
-            sites = get_sites(cache_spec, ring)
+            sites = get_sites(cache_opener, ring)
 
             try:
                 i = sites.index(from_url)
@@ -147,14 +150,14 @@ def view_next(cache_spec, whitelist, args):
     
     return Unprocessable("That webring is not whitelisted.")
 
-def view_prev(cache_spec, whitelist, args):
+def view_prev(cache_opener, whitelist, args):
     """The bounce URL to go to back in the webring."""
 
     ring = args.get('ring', [None])[0]
     if ring in whitelist:
         from_url = args.get('from', [None])[0]
         if from_url is not None:
-            sites = get_sites(cache_spec, ring)
+            sites = get_sites(cache_opener, ring)
 
             try:
                 i = sites.index(from_url)
@@ -168,12 +171,17 @@ def view_prev(cache_spec, whitelist, args):
     return Unprocessable("That webring is not whitelisted.")
     
 
-def view_random(cache_spec, whitelist, args):
+def view_random(cache_opener, whitelist, args):
     """The bounce URL to go to a random site in the webring."""
 
     ring = args.get('ring', [None])[0]
     if ring in whitelist:
-        sites = get_sites(cache_spec, ring)
+        sites = get_sites(cache_opener, ring)
+
+        from_url = args.get('from', [None])[0]
+        if from_url is not None:
+            sites.remove(from_url)
+        
         new_site = random.choice(sites)
         return Found(new_site)
     
@@ -185,23 +193,23 @@ ROUTES = {
     '/random': view_random
 }
 
-def handle_request(cache_spec, whitelist, environ):
+def handle_request(cache_opener, whitelist, environ):
     path = environ['PATH_INFO']
     if path in ROUTES:
         args = urllib.parse.parse_qs(environ['QUERY_STRING'])
         route = ROUTES[path]
-        return route(cache_spec, whitelist, args)
+        return route(cache_opener, whitelist, args)
     
     return NotFound()
 
-def create_app(cache_spec, whitelist):
+def create_app(cache_opener, whitelist):
     def app(environ, start_response):
-        return handle_request(cache_spec, whitelist, environ).emit(start_response)
+        return handle_request(cache_opener, whitelist, environ).emit(start_response)
     
     return app
 
 app = create_app(
-    os.environ.get('CACHE_SPEC', 'sqlite://webring_cache.db'),
+    spec_based_cache_opener(os.environ.get('CACHE_SPEC', 'sqlite://webring_cache.db')),
     os.environ.get('WEBRING_WHITELIST', '').split()
 )
 

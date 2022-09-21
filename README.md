@@ -8,7 +8,7 @@ This [WSGI](https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface) app prov
 Bounce URLs
 -----------
 
-* Random site: `/random?ring=...`
+* Random site: `/random?ring=...&from=...`
 * Next site: `/next?ring=...&from=...`
 * Previous site: `/prev?ring=...&from=...`
 
@@ -25,12 +25,9 @@ See the bounce URLs? The `ring` argument should be a URL to a webpage. The app w
 </ul>
 ```
 
-That's all `/random` needs. The app will then bounce
-the user to a randomly chosen link.
-
-`/next` and `/prev` both require a second argument, called `from`.
-This specifies the **user's current location** on the ring, so that they
-can be shuttled to the next or previous one accordingly.
+Additionally, a second argument `from` should contain the member site you're
+originating from, i.e. **the user's current location**. With both arguments, `ring` and `from`, the
+app can now shuttle the user to the correct next website.
 
 And that's how it works.
 
