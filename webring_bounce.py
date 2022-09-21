@@ -108,13 +108,28 @@ def get_sites(cache_opener, ring):
     key = hashlib.sha256(urllib.parse.unquote(ring).encode('utf-8')).hexdigest()[0:12]
 
     with cache_opener() as cache:
+        etag = None
+
         cached_raw = cache.get(key)
         if cached_raw:
-            data = json.loads(cached_raw)
-            if time.time() < data['retrieved_at'] + 60:
-                return data['sites']
+            cached_dict = json.loads(cached_raw)
+            if time.time() < cached_dict['retrieved_at'] + 60:
+                return cached_dict['sites']
+            
+            etag = cached_dict.get('etag', None)
 
-        with urllib.request.urlopen(ring) as response:
+        headers = {}
+        if etag:
+            headers['If-None-Match'] = etag 
+        
+        req = urllib.request.Request(ring, headers=headers)
+        with urllib.request.urlopen(req) as response:
+            if etag and response.status == 304:
+                return cached_dict['sites']
+            elif response.status != 200:
+                raise RuntimeError('The webring page did not return 200 OK.')
+            
+            new_etag = response.headers.get('ETag', None)
             html = response.read().decode('utf-8')
 
         parser = WebringSourceParser()
@@ -123,10 +138,12 @@ def get_sites(cache_opener, ring):
 
         sites = parser.sites
 
-        cache.set(key, json.dumps({
-            'retrieved_at': time.time(),
-            'sites': sites
-        }))
+        entry = { 'retrieved_at': time.time(), 'sites': sites }
+
+        if new_etag:
+            entry['etag'] = new_etag
+
+        cache.set(key, json.dumps(entry))
 
     return sites
 
