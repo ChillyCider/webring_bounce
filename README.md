@@ -75,9 +75,10 @@ Frequently Asked Questions
 ### Why do webrings have to be whitelisted?
 
 It's a security measure to stop bots from flooding the SQLite cache
-with URLs.
+with URLs. It's also a first line of defense against abuse such as
+that described in [issue #1](https://github.com/ChillyCider/webring_bounce/issues/1).
 
-If there's a way to prevent that without a whitelist, please *lemme know*!
+Consider also that a strict whitelist discourages too many people from depending on the same `webring_bounce.py` instance.
 
 ### Why does this app even exist?
 
