@@ -15,9 +15,7 @@ Bounce URLs
 Define webrings directly in HTML
 --------------------------------
 
-See the bounce URLs? The `ring` parameter should be a URL to a webpage.
-
-The app will scan that webpage for `<a>` elements with their `rel` attribute set to `"webring-member"`.  Example:
+See the bounce URLs? The `ring` argument should be a URL to a webpage. The app will scan that webpage for `<a>` elements with their `rel` attribute set to `"webring-member"`.  Example:
 
 ```html
 <p>Welcome to my Grand Canyon webring!!! The members of this ring are:</p>
@@ -39,7 +37,7 @@ And that's how it works.
 Running for local development
 -----------------------------
 
-Running `webring_bounce.py` by itself will invoke Python's built-in WSGI server.
+Invoking `webring_bounce.py` will start Python's built-in WSGI server.
 
 ```bash
 $ export WEBRING_WHITELIST="https://chillycider.github.io/webring/"
@@ -60,7 +58,7 @@ Listening on 127.0.0.1 port 3000.
 Deploying for real
 ------------------
 
-Here's a starting point for [gunicorn](https://gunicorn.org/).
+Here's a workable example for [gunicorn](https://gunicorn.org/).
 
 ```bash
 $ gunicorn -k gevent -b 0.0.0.0:3000 -w 3 \
@@ -78,11 +76,12 @@ It's a security measure to stop bots from flooding the SQLite cache
 with URLs. It's also a first line of defense against abuse such as
 that described in [issue #1](https://github.com/ChillyCider/webring_bounce/issues/1).
 
-Consider also that a strict whitelist discourages too many people from depending on the same `webring_bounce.py` instance.
+Consider also that a strict whitelist makes it tough for instances to get too widely used,
+discouraging a [single point of failure](https://en.wikipedia.org/wiki/Single_point_of_failure).
 
 ### Why does this app even exist?
 
-To increase the capabilities of HTML-only websites.
+To increase the capabilities of HTML-only websites such as those hosted on [Neocities](https://neocities.org/).
 
 License
 -------
