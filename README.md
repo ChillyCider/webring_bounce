@@ -44,8 +44,8 @@ Running `webring_bounce.py` by itself will invoke Python's built-in WSGI server.
 ```bash
 $ export WEBRING_WHITELIST="https://chillycider.github.io/webring/"
 $ export CACHE_SPEC=sqlite://webring_cache.db
-$ export BIND_HOST=127.0.0.1
-$ export BIND_PORT=3000
+$ export HOST=127.0.0.1
+$ export PORT=3000
 $ python3 webring_bounce.py
 webring_bounce v0.1
 ===================
