@@ -8,6 +8,7 @@ import hashlib
 import sqlite3
 import urllib.parse
 import urllib.request
+import urllib.error
 import html
 from html.parser import HTMLParser
 
@@ -123,14 +124,15 @@ def get_sites(cache_opener, ring):
             headers['If-None-Match'] = etag 
         
         req = urllib.request.Request(ring, headers=headers)
-        with urllib.request.urlopen(req) as response:
-            if etag and response.status == 304:
+        try:
+            with urllib.request.urlopen(req) as response:
+                new_etag = response.headers.get('ETag', None)
+                html = response.read().decode('utf-8')
+        except urllib.error.HTTPError as e:
+            if e.code == 304:
                 return cached_dict['sites']
-            elif response.status != 200:
-                raise RuntimeError('The webring page did not return 200 OK.')
-            
-            new_etag = response.headers.get('ETag', None)
-            html = response.read().decode('utf-8')
+            else:
+                raise e
 
         parser = WebringSourceParser()
         parser.feed(html)
