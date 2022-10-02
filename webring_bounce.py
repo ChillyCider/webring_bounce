@@ -90,25 +90,22 @@ class SqliteCache(object):
         self.con.execute("INSERT OR IGNORE INTO cache (key, value) VALUES (?, ?)", (key, value))
         self.con.execute("COMMIT")
 
-def spec_based_cache_opener(spec):
-    def cache_opener():
-        parts = spec.split('://', 1)
-        if parts[0] == 'sqlite':
-            if len(parts) == 1:
-                raise ValueError('SQLite cache provider requires a path, e.g. sqlite:///tmp/webring_cache.db')
-            
-            return SqliteCache(parts[1])
-        else:
-            raise ValueError('Could not understand cache provider spec %r' % (spec,))
-    
-    return cache_opener
+def cache_factory(spec):
+    parts = spec.split('://', 1)
+    if parts[0] == 'sqlite':
+        if len(parts) == 1:
+            raise ValueError('SQLite cache provider requires a path, e.g. sqlite:///tmp/webring_cache.db')
+        
+        return SqliteCache(parts[1])
+    else:
+        raise ValueError('Could not understand cache provider spec %r' % (spec,))
 
 def get_sites(cache_opener, ring):
     """Get a webring's member sites, checking the cache first."""
 
-    key = hashlib.sha256(urllib.parse.unquote(ring).encode('utf-8')).hexdigest()[0:12]
+    key = hashlib.sha256(ring.encode('utf-8')).hexdigest()[0:12]
 
-    with cache_opener() as cache:
+    with cache_opener as cache:
         etag = None
 
         cached_raw = cache.get(key)
@@ -228,7 +225,7 @@ def create_app(cache_opener, whitelist):
     return app
 
 app = create_app(
-    spec_based_cache_opener(os.environ.get('CACHE_SPEC', 'sqlite://webring_cache.db')),
+    cache_factory(os.environ.get('CACHE_SPEC', 'sqlite://webring_cache.db')),
     os.environ.get('WEBRING_WHITELIST', '').split()
 )
 
