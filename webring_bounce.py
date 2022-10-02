@@ -14,6 +14,8 @@ from html.parser import HTMLParser
 
 VERSION = '0.1'
 
+# HTTP responses
+
 class NotFound(object):
     def emit(self, start_response):
         start_response('404 Not Found', [('Content-Type', 'text/html')])
@@ -34,7 +36,7 @@ class Found(object):
     def emit(self, start_response):
         start_response('302 Found', [('Location', self.location)])
         return [
-            b'<h1>402 Found</h1>',
+            b'<h1>302 Found</h1>',
             b'<p>If you aren\'t redirected in the next few seconds, <a href="',
             html.escape(self.location, True).encode('utf-8'),
             b'">click here</a>.</p>'
@@ -61,13 +63,11 @@ class SqliteCache(object):
 
     def __enter__(self):
         self.con = sqlite3.connect(self.path)
-        self.con.execute("""
-            CREATE TABLE IF NOT EXISTS cache (
-                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                key TEXT NOT NULL UNIQUE,
-                value TEXT NOT NULL
-            )
-        """)
+        self.con.execute(""" CREATE TABLE IF NOT EXISTS cache (
+                                 id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                                 key TEXT NOT NULL UNIQUE,
+                                 value TEXT NOT NULL
+                             ) """)
         return self
     
     def __exit__(self, exc_type, exc_value, exc_traceback):
@@ -75,11 +75,9 @@ class SqliteCache(object):
             self.con.close()
     
     def get(self, key):
-        cur = self.con.execute("""
-            SELECT value FROM cache
-            WHERE key = ?
-            LIMIT 1
-        """, (key,))
+        cur = self.con.execute(""" SELECT value FROM cache
+                                   WHERE key = ?
+                                   LIMIT 1 """, (key,))
         result = cur.fetchone()
         if result is not None:
             result = result[0]
@@ -146,7 +144,7 @@ def get_sites(cache_opener, ring):
 
     return sites
 
-def view_next(cache_opener, whitelist, args):
+def v_next(cache_opener, whitelist, args):
     """The bounce URL to go forward in the webring."""
 
     ring = args.get('ring', [None])[0]
@@ -161,12 +159,10 @@ def view_next(cache_opener, whitelist, args):
                 return Unprocessable("The site you came from is not in the webring.")
             
             return Found(sites[(i + 1) % len(sites)])
-        
         return Unprocessable("No \"from\" parameter was given.")
-    
     return Unprocessable("That webring is not whitelisted.")
 
-def view_prev(cache_opener, whitelist, args):
+def v_prev(cache_opener, whitelist, args):
     """The bounce URL to go to back in the webring."""
 
     ring = args.get('ring', [None])[0]
@@ -181,13 +177,11 @@ def view_prev(cache_opener, whitelist, args):
                 return Unprocessable("The site you came from is not in the webring.")
             
             return Found(sites[(i - 1) % len(sites)])
-        
         return Unprocessable("No \"from\" parameter was given.")
-    
     return Unprocessable("That webring is not whitelisted.")
     
 
-def view_random(cache_opener, whitelist, args):
+def v_random(cache_opener, whitelist, args):
     """The bounce URL to go to a random site in the webring."""
 
     ring = args.get('ring', [None])[0]
@@ -200,14 +194,9 @@ def view_random(cache_opener, whitelist, args):
         
         new_site = random.choice(sites)
         return Found(new_site)
-    
     return Unprocessable("That webring is not whitelisted.")
 
-ROUTES = {
-    '/next': view_next,
-    '/prev': view_prev,
-    '/random': view_random
-}
+ROUTES = { '/next': v_next, '/prev': v_prev, '/random': v_random }
 
 def handle_request(cache_opener, whitelist, environ):
     path = environ['PATH_INFO']
@@ -244,6 +233,6 @@ if __name__ == '__main__':
         print("""
 *  Note: You are using the built-in Python WSGI server. If this service
 *  is intended to be accessible on the public Internet, then we
-*  recommend using a more secure server such as gunicorn (Green Unicorn).""", file=sys.stderr)
-        print('', file=sys.stderr)
+*  recommend using a more secure server such as gunicorn (Green Unicorn).
+""", file=sys.stderr)
         httpd.serve_forever()
