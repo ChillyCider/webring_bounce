@@ -71,7 +71,8 @@ Frequently Asked Questions
 
 It's a security measure to stop bots from flooding the SQLite cache
 with URLs. It's also a first line of defense against abuse such as
-that described in [issue #1](https://github.com/ChillyCider/webring_bounce/issues/1).
+that described in issues [#1](https://github.com/ChillyCider/webring_bounce/issues/1)
+and [#3](https://github.com/ChillyCider/webring_bounce/issues/3).
 
 Consider also that a strict whitelist makes it tough for instances to get too widely used,
 discouraging a [single point of failure](https://en.wikipedia.org/wiki/Single_point_of_failure).
