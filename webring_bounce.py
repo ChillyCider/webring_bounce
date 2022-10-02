@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import html
+import socket
 from html.parser import HTMLParser
 
 VERSION = '0.1'
@@ -116,7 +117,7 @@ def get_sites(cache_opener, ring):
 
         headers = {}
         if etag:
-            headers['If-None-Match'] = etag 
+            headers['If-None-Match'] = etag
         
         req = urllib.request.Request(ring, headers=headers)
         try:
@@ -144,11 +145,11 @@ def get_sites(cache_opener, ring):
 
     return sites
 
-def v_next(cache_opener, whitelist, args):
+def v_next(cache_opener, ring_policy, args):
     """The bounce URL to go forward in the webring."""
 
     ring = args.get('ring', [None])[0]
-    if ring in whitelist:
+    if ring_policy.check(ring):
         from_url = args.get('from', [None])[0]
         if from_url is not None:
             sites = get_sites(cache_opener, ring)
@@ -162,11 +163,11 @@ def v_next(cache_opener, whitelist, args):
         return Unprocessable("No \"from\" parameter was given.")
     return Unprocessable("That webring is not whitelisted.")
 
-def v_prev(cache_opener, whitelist, args):
+def v_prev(cache_opener, ring_policy, args):
     """The bounce URL to go to back in the webring."""
 
     ring = args.get('ring', [None])[0]
-    if ring in whitelist:
+    if ring_policy.check(ring):
         from_url = args.get('from', [None])[0]
         if from_url is not None:
             sites = get_sites(cache_opener, ring)
@@ -181,11 +182,11 @@ def v_prev(cache_opener, whitelist, args):
     return Unprocessable("That webring is not whitelisted.")
     
 
-def v_random(cache_opener, whitelist, args):
+def v_random(cache_opener, ring_policy, args):
     """The bounce URL to go to a random site in the webring."""
 
     ring = args.get('ring', [None])[0]
-    if ring in whitelist:
+    if ring_policy.check(ring):
         sites = get_sites(cache_opener, ring)
 
         from_url = args.get('from', [None])[0]
@@ -198,24 +199,31 @@ def v_random(cache_opener, whitelist, args):
 
 ROUTES = { '/next': v_next, '/prev': v_prev, '/random': v_random }
 
-def handle_request(cache_opener, whitelist, environ):
+def handle_request(cache_opener, ring_policy, environ):
     path = environ['PATH_INFO']
     if path in ROUTES:
         args = urllib.parse.parse_qs(environ['QUERY_STRING'])
         route = ROUTES[path]
-        return route(cache_opener, whitelist, args)
+        return route(cache_opener, ring_policy, args)
     
     return NotFound()
 
-def create_app(cache_opener, whitelist):
+def create_app(cache_opener, ring_policy):
     def app(environ, start_response):
-        return handle_request(cache_opener, whitelist, environ).emit(start_response)
+        return handle_request(cache_opener, ring_policy, environ).emit(start_response)
     
     return app
 
+class RingPolicy(object):
+    def __init__(self, policy):
+        self.rings = policy.split()
+    
+    def check(self, ring):
+        return ring in self.rings
+
 app = create_app(
     cache_factory(os.environ.get('CACHE_SPEC', 'sqlite://webring_cache.db')),
-    os.environ.get('WEBRING_WHITELIST', '').split()
+    RingPolicy(os.environ.get('WEBRING_WHITELIST', ''))
 )
 
 if __name__ == '__main__':
