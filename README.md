@@ -1,5 +1,5 @@
-webring-jump
-============
+webring_bounce
+==============
 
 This [WSGI](https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface) app provides bounce URLs to HTML-driven [webrings](https://en.wikipedia.org/wiki/Webring).
 
